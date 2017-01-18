@@ -1,0 +1,6 @@
+.idea/
+*.pyc
+dist/
+python_spark_advanced.egg-info/
+.eggs/
+venv/
