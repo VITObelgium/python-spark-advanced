@@ -1,0 +1,12 @@
+#!/bin/sh
+
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 <output directory>"
+    exit 1
+fi
+
+OUTPUT_DIR=$1
+
+python setup.py bdist_egg && \
+spark-submit --master yarn-cluster --num-executors 4 --py-files dist/python_spark_advanced-0.1-py2.7.egg subtile_average.py "$OUTPUT_DIR"
+

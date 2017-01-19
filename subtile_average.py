@@ -3,6 +3,7 @@ Requests a time sequence of tiles, splits them up in sub-tiles (line-based) and 
 to a single tile again.
 """
 
+from tiles.ndvi import NdviTile, NdviSubTile
 from datetime import datetime
 from catalogclient.catalog import Catalog
 from pyspark import SparkContext
@@ -10,51 +11,7 @@ import rasterio
 import numpy as np
 import sys
 
-TILE_WIDTH = 3360
-TILE_HEIGHT = 3360
 ROWS_PER_TILE = 4
-
-
-class NdviTile(object):
-    def __init__(self, eoproduct):
-        self.x = eoproduct.tilex
-        self.y = eoproduct.tiley
-        self.ndvi_file = NdviTile._extract_ndvi_file(eoproduct)
-
-    @staticmethod
-    def _extract_ndvi_file(eoproduct):
-        prefix = "file:"
-
-        ndvi_files = [file.filename[len(prefix):]
-                      for file in eoproduct.files
-                      if file.filename.startswith(prefix) and 'NDVI' in file.bands]
-
-        if not ndvi_files:
-            raise RuntimeError('no NDVI file found', eoproduct)
-        else:
-            return ndvi_files[0]
-
-
-class NdviSubTile(object):
-    def __init__(self, ndvi_tile, row, total_rows):
-        self.x = ndvi_tile.x
-        self.y = ndvi_tile.y
-        self.row = row
-        self.image_data = self._extract_image_data(ndvi_tile.ndvi_file, self.row, total_rows)
-
-    @staticmethod
-    def _extract_image_data(ndvi_file, row, total_rows):
-        import numpy
-
-        with rasterio.open(ndvi_file) as src:
-            band = src.read()[0]
-            (height, width) = band.shape
-
-            if width != TILE_WIDTH or height != TILE_HEIGHT:
-                raise RuntimeError('expected width/height %i/%i, got %i, %i instead' %
-                                   (TILE_WIDTH, TILE_HEIGHT, width, height))
-
-            return numpy.vsplit(band, total_rows)[row]
 
 
 def main(argv):
@@ -80,7 +37,7 @@ def main(argv):
 
         # sum and count sub-images per position: [((x, y, row), [(total, count)])]
         sub_image_sums = sub_image_at_position.aggregateByKey(
-            zeroValue=(np.zeros((TILE_HEIGHT / ROWS_PER_TILE, TILE_WIDTH)), 0),
+            zeroValue=(np.zeros((NdviTile.TILE_HEIGHT / ROWS_PER_TILE, NdviTile.TILE_WIDTH)), 0),
             seqFunc=lambda (total, count), image_data: (total + image_data, count + 1),
             combFunc=lambda (total0, count0), (total1, count1): (total0 + total1, count0 + count1)
         )
@@ -101,7 +58,7 @@ def main(argv):
             output_file = '%s/subtile_average_%i_%i.tif' % (output_dir, x, y)
             joined_image_data = np.concatenate(tuple(rows))
 
-            with rasterio.open(output_file, mode='w', driver='GTiff', width=TILE_WIDTH, height=TILE_HEIGHT, count=1,
+            with rasterio.open(output_file, mode='w', driver='GTiff', width=NdviTile.TILE_WIDTH, height=NdviTile.TILE_HEIGHT, count=1,
                                dtype=rasterio.uint8) as dst:
                 dst.write(joined_image_data.astype(rasterio.uint8), 1)
 
