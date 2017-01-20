@@ -1,6 +1,6 @@
 """
-Requests a time sequence of tiles, splits them up in sub-tiles (line-based) and reduces them (calculates their average)
-to a single tile again.
+This Spark application will request a time sequence of tiles, split them up into sub-tiles, reduce those sub-tiles in
+time (in this case, calculate their mean) in a distributed way, re-assemble those sub-tiles and write them to files.
 """
 
 from tiles.ndvi import NdviTile, NdviSubTile
@@ -23,6 +23,15 @@ def main(argv):
 
     sc = SparkContext(appName='subtile_average')
 
+    def mean(sub_tiles):
+        """Returns the mean of the images within a collection of sub-tiles."""
+        result = np.zeros((NdviTile.TILE_HEIGHT / ROWS_PER_TILE, NdviTile.TILE_WIDTH))
+
+        for sub_tile in sub_tiles:
+            result += sub_tile.image_data()
+
+        return (result / len(sub_tiles)).astype(rasterio.uint8)
+
     try:
         # the list of NDVI tiles for the entire bounding box, for all times
         ndvi_tiles = sc.parallelize(products).map(NdviTile)
@@ -31,19 +40,15 @@ def main(argv):
         ndvi_sub_tiles = ndvi_tiles\
             .flatMap(lambda tile: [NdviSubTile(tile, row, ROWS_PER_TILE) for row in range(ROWS_PER_TILE)])
 
-        # create pairs [((x, y, row), sub_image)]
-        sub_image_at_position = ndvi_sub_tiles\
-            .map(lambda sub_tile: ((sub_tile.x, sub_tile.y, sub_tile.row), sub_tile.image_data))
+        # create pairs [((x, y, row), sub_tile)]
+        sub_tile_at_position = ndvi_sub_tiles\
+            .map(lambda sub_tile: ((sub_tile.x, sub_tile.y, sub_tile.row), sub_tile))
 
-        # sum and count sub-images per position: [((x, y, row), [(total, count)])]
-        sub_image_sums = sub_image_at_position.aggregateByKey(
-            zeroValue=(np.zeros((NdviTile.TILE_HEIGHT / ROWS_PER_TILE, NdviTile.TILE_WIDTH)), 0),
-            seqFunc=lambda (total, count), image_data: (total + image_data, count + 1),
-            combFunc=lambda (total0, count0), (total1, count1): (total0 + total1, count0 + count1)
-        )
+        # group sub-tiles by position (same x, y and row): [((x, y, row), [sub_tile])]
+        sub_tiles_at_position = sub_tile_at_position.groupByKey()
 
-        # calculate sub-image average from sum and count
-        sub_image_averages = sub_image_sums.map(lambda (location, (total, count)): (location, total / count))
+        # reduce sub-tiles: in this case, calculate mean
+        sub_image_averages = sub_tiles_at_position.mapValues(mean)
 
         # re-group sub-image averages by tile (x, y) again: [((x, y), [((x, y, row), average)]], then sort them by
         # row and only keep the averaged image data
@@ -60,7 +65,7 @@ def main(argv):
 
             with rasterio.open(output_file, mode='w', driver='GTiff', width=NdviTile.TILE_WIDTH, height=NdviTile.TILE_HEIGHT, count=1,
                                dtype=rasterio.uint8) as dst:
-                dst.write(joined_image_data.astype(rasterio.uint8), 1)
+                dst.write(joined_image_data, 1)
 
         tile_averages.foreach(write_image)
     finally:

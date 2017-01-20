@@ -1,5 +1,5 @@
-This Spark application will request a time sequence of tiles, split them up into sub-tiles, reduce those sub-tiles
-(in this case, calculate their mean) in a distributed way, re-assemble those sub-tiles and write them to files.
+This Spark application will request a time sequence of tiles, split them up into sub-tiles, reduce those sub-tiles in
+time (in this case, calculate their mean) in a distributed way, re-assemble those sub-tiles and write them to files.
 
 For more information regarding IDE setup and inspecting Spark jobs on Hadoop, refer to the
 [python-spark-quickstart](https://bitbucket.org/vitotap/python-spark-quickstart) project.

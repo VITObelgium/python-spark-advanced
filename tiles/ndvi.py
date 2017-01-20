@@ -25,15 +25,15 @@ class NdviSubTile(object):
     def __init__(self, ndvi_tile, row, total_rows):
         self.x = ndvi_tile.x
         self.y = ndvi_tile.y
+        self.ndvi_file = ndvi_tile.ndvi_file
         self.row = row
-        self.image_data = self._extract_image_data(ndvi_tile.ndvi_file, self.row, total_rows)
+        self.total_rows = total_rows
 
-    @staticmethod
-    def _extract_image_data(ndvi_file, row, total_rows):
+    def image_data(self):
         import rasterio
         import numpy
 
-        with rasterio.open(ndvi_file) as src:
+        with rasterio.open(self.ndvi_file) as src:
             band = src.read()[0]
             (height, width) = band.shape
 
@@ -41,5 +41,4 @@ class NdviSubTile(object):
                 raise RuntimeError('expected width/height %i/%i, got %i, %i instead' %
                                    (NdviTile.TILE_WIDTH, NdviTile.TILE_HEIGHT, width, height))
 
-            return numpy.vsplit(band, total_rows)[row]
-
+            return numpy.vsplit(band, self.total_rows)[self.row]
