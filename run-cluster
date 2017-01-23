@@ -9,6 +9,6 @@ fi
 
 OUTPUT_DIR=$1
 
-python setup.py bdist_egg && \
-spark-submit --master yarn-cluster --num-executors 4 --py-files dist/python_spark_advanced-0.1-py2.7.egg subtile_average.py "$OUTPUT_DIR"
+zip -r tiles.zip tiles/ && \
+spark-submit --master yarn-cluster --num-executors 4 --py-files tiles.zip subtile_average.py "$OUTPUT_DIR"
 
