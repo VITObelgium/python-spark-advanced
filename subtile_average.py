@@ -7,10 +7,12 @@ from tiles.ndvi import NdviTile, NdviSubTile
 from datetime import datetime
 from catalogclient.catalog import Catalog
 from pyspark import SparkContext
+from collections import namedtuple
+from pyspark.serializers import CloudPickleSerializer
 import rasterio
 import numpy as np
 import sys
-
+import copy
 ROWS_PER_TILE = 4
 
 
@@ -21,11 +23,11 @@ def main(argv):
                                       startdate=datetime(2016, 1, 1), enddate=datetime(2016, 2, 28),
                                       min_lon=-2.5, max_lon=6.5, min_lat=49.5, max_lat=51.5)
 
-    sc = SparkContext(appName='subtile_average')
+    sc = SparkContext(appName='subtile_average',serializer=CloudPickleSerializer())
 
     def mean(sub_tiles):
         """Returns the mean of the images within a collection of sub-tiles."""
-        result = np.zeros((NdviTile.TILE_HEIGHT / ROWS_PER_TILE, NdviTile.TILE_WIDTH))
+        result = np.zeros((int(NdviTile.TILE_HEIGHT / ROWS_PER_TILE), NdviTile.TILE_WIDTH))
 
         for sub_tile in sub_tiles:
             result += sub_tile.image_data()
@@ -34,15 +36,16 @@ def main(argv):
 
     try:
         # the list of NDVI tiles for the entire bounding box, for all times
-        ndvi_tiles = sc.parallelize(products).map(NdviTile)
+        ndvi_tiles = sc.parallelize(copy.deepcopy(products)).map(NdviTile)
 
         # split tiles into sub-tiles: expand [(x, y)] to [(x, y, row)]
         ndvi_sub_tiles = ndvi_tiles\
             .flatMap(lambda tile: [NdviSubTile(tile, row, ROWS_PER_TILE) for row in range(ROWS_PER_TILE)])
 
+        TileKey = namedtuple('TileKey', 'x y row')
         # create pairs [((x, y, row), sub_tile)]
         sub_tile_at_position = ndvi_sub_tiles\
-            .map(lambda sub_tile: ((sub_tile.x, sub_tile.y, sub_tile.row), sub_tile))
+            .map(lambda sub_tile: (TileKey(sub_tile.x, sub_tile.y, sub_tile.row), sub_tile))
 
         # group sub-tiles by position (same x, y and row): [((x, y, row), [sub_tile])]
         sub_tiles_at_position = sub_tile_at_position.groupByKey()
@@ -50,12 +53,13 @@ def main(argv):
         # reduce sub-tiles: in this case, calculate mean
         sub_image_averages = sub_tiles_at_position.mapValues(mean)
 
+        
         # re-group sub-image averages by tile (x, y) again: [((x, y), [((x, y, row), average)]], then sort them by
         # row and only keep the averaged image data
         tile_averages = sub_image_averages\
-            .groupBy(lambda ((x, y, _), __): (x, y))\
-            .mapValues(lambda rows: sorted(rows, key=lambda ((_, __, row), average): row))\
-            .mapValues(lambda rows: map(lambda ((_, __, ___), average): average, rows))
+            .groupBy(lambda tuple: (tuple[0].x, tuple[0].y))\
+            .mapValues(lambda rows: sorted(rows, key=lambda tuple: tuple[0].row))\
+            .mapValues(lambda rows: map(lambda tuple: tuple[1], rows))
 
         def write_image(tile_average):
             (x, y), rows = tile_average
