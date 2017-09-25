@@ -37,6 +37,6 @@ file2="$output_dir/subtile_average_18_2.tif"
 fail_if_too_old $file1 120
 fail_if_too_old $file2 120
 
-echo "d18b61eec14e203157961571b84b795b  $file1" | md5sum -c - && \
-echo "39978405e412a2e0cf09c5ad6193c1d0  $file2" | md5sum -c -
+echo "e3fbba4004d73e7f932b5705afe6259a  $file1" | md5sum -c - && \
+echo "7a82d71b78534195686775b112837cb5  $file2" | md5sum -c -
 
