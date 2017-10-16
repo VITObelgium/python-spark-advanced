@@ -1,0 +1,61 @@
+<workflow-app name="SampleWorkflow" xmlns="uri:oozie:workflow:0.5">
+    <parameters>
+        <property>
+            <name>jobTracker</name>
+            <value>hacluster:8050</value>
+        </property>
+        <property>
+            <name>nameNode</name>
+            <value>hdfs://hacluster</value>
+        </property>
+        <property>
+            <name>oozie.use.system.libpath</name>
+            <value>True</value>
+        </property>
+        <property>
+            <name>output_dir</name>
+            <value>.</value>
+        </property>
+    </parameters>
+    <start to="ComputeAverage" />
+    <action name="ComputeAverage">
+        <spark xmlns="uri:oozie:spark-action:0.2">
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <prepare>
+                <mkdir path="${outputDir}" />
+            </prepare>
+            <configuration>
+                <property>
+                    <name>mapred.queue.name</name>
+                    <value>default</value>
+                </property>
+                <property>
+                    <name>fs.permissions.umask-mode</name>
+                    <value>007</value>
+                </property>
+            </configuration>
+            <master>yarn</master>
+            <mode>client</mode>
+            <name>Sample workflow</name>
+            <jar>subtile_average.py</jar>
+            <spark-opts>--num-executors 4 --executor-memory 2G --conf spark.hadoop.fs.permissions.umask-mode=007 --archives hdfs:</spark-opts>
+            <arg>${output_dir}</arg>
+        </spark>
+        <ok to="end" />
+        <error to="fail" />
+    </action>
+    <action name="fail">
+        <email xmlns="uri:oozie:email-action:0.2">
+            <to>test@mail.com</to>
+            <subject>Sample workflow failed</subject>
+            <body>Sample workflow ${wf:id()} failed: ${wf:errorMessage(wf:lastErrorNode())}</body>
+        </email>
+        <ok to="kill"/>
+        <error to="kill"/>
+    </action>
+    <kill name="kill">
+        <message>Sample workflow failed: ${wf:errorMessage(wf:lastErrorNode())}</message>
+    </kill>
+    <end name="end" />
+</workflow-app>
