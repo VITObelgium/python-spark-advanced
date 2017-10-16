@@ -23,7 +23,7 @@
             <job-tracker>${jobTracker}</job-tracker>
             <name-node>${nameNode}</name-node>
             <prepare>
-                <mkdir path="${outputDir}" />
+                <mkdir path="${output_dir}" />
             </prepare>
             <configuration>
                 <property>
