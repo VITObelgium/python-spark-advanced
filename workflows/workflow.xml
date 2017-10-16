@@ -22,9 +22,6 @@
         <spark xmlns="uri:oozie:spark-action:0.2">
             <job-tracker>${jobTracker}</job-tracker>
             <name-node>${nameNode}</name-node>
-            <prepare>
-                <mkdir path="${output_dir}" />
-            </prepare>
             <configuration>
                 <property>
                     <name>mapred.queue.name</name>
@@ -39,7 +36,7 @@
             <mode>client</mode>
             <name>Sample workflow</name>
             <jar>subtile_average.py</jar>
-            <spark-opts>--num-executors 4 --executor-memory 2G --conf spark.hadoop.fs.permissions.umask-mode=007 --archives hdfs:///samples/tile_average/lib/tiles.zip</spark-opts>
+            <spark-opts>--num-executors 4 --executor-memory 2G --conf spark.hadoop.fs.permissions.umask-mode=007 --py-files tiles.zip</spark-opts>
             <arg>${output_dir}</arg>
         </spark>
         <ok to="end" />
