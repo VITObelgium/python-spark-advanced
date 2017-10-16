@@ -1,0 +1,11 @@
+<coordinator-app name="TimeSeriesServiceCoordinator" frequency="0 2 * * *" start="2016-06-10T00:00Z" end="2050-01-01T00:00Z" timezone="UTC" xmlns="uri:oozie:coordinator:0.1">
+    <controls>
+        <concurrency>1</concurrency>
+        <execution>LAST_ONLY</execution>
+    </controls>
+    <action>
+        <workflow>
+            <app-path>hdfs://hacluster/samples/tile_average/workflow.xml</app-path>
+        </workflow>
+    </action>
+</coordinator-app>

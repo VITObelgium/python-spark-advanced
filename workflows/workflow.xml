@@ -39,7 +39,7 @@
             <mode>client</mode>
             <name>Sample workflow</name>
             <jar>subtile_average.py</jar>
-            <spark-opts>--num-executors 4 --executor-memory 2G --conf spark.hadoop.fs.permissions.umask-mode=007 --archives hdfs:</spark-opts>
+            <spark-opts>--num-executors 4 --executor-memory 2G --conf spark.hadoop.fs.permissions.umask-mode=007 --archives hdfs:///samples/tile_average/lib/tiles.zip</spark-opts>
             <arg>${output_dir}</arg>
         </spark>
         <ok to="end" />
