@@ -10,5 +10,5 @@ fi
 OUTPUT_DIR=$1
 
 zip -r tiles.zip tiles/ && \
-spark-submit --master yarn-cluster --num-executors 4 --py-files tiles.zip subtile_average.py "$OUTPUT_DIR"
+spark-submit --master yarn-cluster --conf spark.shuffle.service.enabled=true --conf spark.dynamicAllocation.enabled=true --py-files tiles.zip subtile_average.py "$OUTPUT_DIR"
 
