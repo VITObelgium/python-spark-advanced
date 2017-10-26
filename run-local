@@ -1,4 +1,4 @@
 #!/bin/sh
 
-spark-submit --master local[*] subtile_average.py "$@"
+spark-submit --master local[*] --conf spark.eventLog.enabled=false subtile_average.py "$@"
 
