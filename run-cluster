@@ -8,6 +8,8 @@ if [ "$#" -ne 1 ]; then
 fi
 
 OUTPUT_DIR=$1
+export SPARK_MAJOR_VERSION=2
+export SPARK_HOME=/usr/hdp/current/spark2-client
 
 zip -r tiles.zip tiles/ && \
 spark-submit --master yarn-cluster --conf spark.shuffle.service.enabled=true --conf spark.dynamicAllocation.enabled=true --files log4j.properties --py-files tiles.zip subtile_average.py "$OUTPUT_DIR"
